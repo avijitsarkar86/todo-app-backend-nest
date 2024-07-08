@@ -4,13 +4,14 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Repository } from 'typeorm';
-import { Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 const mockUserRepo = {
   create: jest.fn(),
   save: jest.fn(),
+  findOne: jest.fn(),
+  findOneBy: jest.fn(),
 };
 
 const createUserDto: CreateUserDto = {
@@ -19,9 +20,10 @@ const createUserDto: CreateUserDto = {
 };
 
 const mockUser: User = {
-  id: new Types.ObjectId(),
+  id: '4110bd77-9f77-4ef6-9f2c-3f8d8e5cf992',
   username: 'test',
   password: expect.anything(),
+  todos: [],
 };
 
 describe('UserService', () => {
@@ -67,11 +69,37 @@ describe('UserService', () => {
     });
 
     it('should throw an error if username already exists', async () => {
-      jest.spyOn(repository, 'save').mockRejectedValue({ code: 11000 });
+      jest
+        .spyOn(repository, 'save')
+        .mockRejectedValue({ code: 'ER_DUP_ENTRY' });
 
       await expect(service.create(createUserDto)).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('findOneByUsername', () => {
+    it('should return a user by provided username', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
+      const result = await service.findOneByUsername(mockUser.username);
+      expect(result).toBe(mockUser);
+    });
+
+    it('should throw NotFoundException when user does not exist', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+      await expect(service.findOneByUsername('something')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('findOneById', () => {
+    it('should return a user by provided ID', async () => {
+      const id = '4110bd77-9f77-4ef6-9f2c-3f8d8e5cf992';
+      jest.spyOn(repository, 'findOneBy').mockResolvedValue(mockUser);
+      const result = await service.findOneById(id);
+      expect(result).toBe(mockUser);
     });
   });
 });

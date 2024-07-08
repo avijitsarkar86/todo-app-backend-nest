@@ -1,9 +1,15 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
+// import { Types, ObjectId } from 'mongoose';
+// import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class UserService {
@@ -24,11 +30,31 @@ export class UserService {
     try {
       return await this.userRepo.save(user);
     } catch (e) {
-      console.log('e : ', e.code);
-      if (e.code === 11000) {
+      // console.log('create :: e : ', e.code);
+      if (e.code === 'ER_DUP_ENTRY') {
         // duplicate entry
         throw new ConflictException('username already registered');
       }
+      throw e;
+    }
+  }
+
+  async findOneByUsername(username: string): Promise<User> {
+    const user = await this.userRepo.findOne({ where: { username } });
+
+    if (!user) {
+      throw new NotFoundException('user not found');
+    }
+    return user;
+  }
+
+  async findOneById(id: string) {
+    try {
+      return await this.userRepo.findOneBy({
+        id,
+      });
+      // return ({ password, ...result } = result);
+    } catch (e) {
       throw e;
     }
   }

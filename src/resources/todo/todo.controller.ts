@@ -6,44 +6,50 @@ import {
   Param,
   Patch,
   Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TodoService } from './todo.service';
 import { Todo } from './entities/todo.entity';
 import { CreateTodoDto } from './dto/create-todo.dto';
-import { ValidateObjectId } from '../../pipes/validate-objectid.pipe';
 import { UpdateTodoDto } from './dto/update-todo.dto';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { User } from '../user/entities/user.entity';
 
 @ApiTags('Todo')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('todo')
 export class TodoController {
   constructor(private readonly todoService: TodoService) {}
 
   @Post()
-  create(@Body() createTodo: CreateTodoDto): Promise<Todo> {
-    return this.todoService.create(createTodo);
+  create(@Body() createTodo: CreateTodoDto, @Request() req): Promise<Todo> {
+    return this.todoService.create(createTodo, req.user as User);
   }
 
   @Get()
-  findAll(): Promise<Todo[]> {
-    return this.todoService.findAll();
+  findAll(@Request() req): Promise<Todo[]> {
+    return this.todoService.findAll(req.user as User);
   }
 
-  // @Get(':id')
-  // findOne(@Param('id', ValidateObjectId) id: string): Promise<Todo> {
-  //   return this.todoService.findOne(id);
-  // }
+  // // @Get(':id')
+  // // findOne(@Param('id') id: string): Promise<Todo> {
+  // //   return this.todoService.findOne(id);
+  // // }
 
   @Patch(':id')
   update(
-    @Param('id', ValidateObjectId) id: string,
+    @Param('id') id: string,
     @Body() updateTodo: UpdateTodoDto,
-  ): Promise<any> {
-    return this.todoService.update(id, updateTodo);
+    @Request() req,
+  ): Promise<Todo> {
+    return this.todoService.update(id, updateTodo, req.user as User);
   }
 
   @Delete(':id')
-  remove(@Param('id', ValidateObjectId) id: string): Promise<any> {
-    return this.todoService.remove(id);
+  remove(@Param('id') id: string, @Request() req): Promise<any> {
+    return this.todoService.remove(id, req.user as User);
   }
 }

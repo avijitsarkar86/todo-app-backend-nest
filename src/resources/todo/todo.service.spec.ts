@@ -1,21 +1,42 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TodoService } from './todo.service';
 import { Repository } from 'typeorm';
-import { Todo } from './entities/todo.entity';
+import { Todo, TodoStatus } from './entities/todo.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CreateTodoDto } from './dto/create-todo.dto';
+import { UpdateTodoDto } from './dto/update-todo.dto';
+import { User } from '../user/entities/user.entity';
+import { NotFoundException } from '@nestjs/common';
 
-const mockTodoRepo = {
-  find: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  save: jest.fn(),
-  delete: jest.fn(),
+const mockuser: User = {
+  id: '4110bd77-9f77-4ef6-9f2c-3f8d8e5cf992',
+  username: 'testuser',
+  password: 'hashedpassword',
+  todos: [],
+};
+
+const mockTodo: Todo = {
+  id: '456',
+  title: 'Test todo',
+  description: 'test desc',
+  user: mockuser,
+  status: TodoStatus.PENDING,
+  created_at: new Date(),
+  updated_at: new Date(),
 };
 
 describe('TodoService', () => {
   let service: TodoService;
   let repository: Repository<Todo>;
+
+  const mockTodoRepo = {
+    find: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    findOne: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,54 +57,74 @@ describe('TodoService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create a new todo', async () => {
-    const createTodo: CreateTodoDto = {
-      title: 'Todo 1',
-      description: 'Test description',
-      status: 'pending',
-    };
+  describe('create', () => {
+    it('should create a new todo', async () => {
+      const createTodo: CreateTodoDto = {
+        title: mockTodo.title,
+        description: mockTodo.description,
+      };
 
-    jest.spyOn(repository, 'save').mockResolvedValue(createTodo as Todo);
-
-    expect(await service.create(createTodo)).toBe(createTodo);
+      jest.spyOn(repository, 'save').mockResolvedValue(mockTodo);
+      expect(await service.create(createTodo, mockuser)).toBe(mockTodo);
+    });
   });
 
   it('should return all todo', async () => {
-    const todos = [
-      {
-        title: 'Todo 1',
-        description: 'Test description',
-        status: 'pending',
-      },
-    ];
+    const todos = [mockTodo];
     jest.spyOn(repository, 'find').mockResolvedValue(todos as Todo[]);
-    expect(await service.findAll()).toBe(todos);
+    expect(await service.findAll(mockuser)).toBe(todos);
   });
 
-  // it('should return a todo by id', async () => {
-  //   const todo = {
-  //     title: 'Todo 1',
-  //     description: 'Test description',
-  //     status: 'pending',
-  //   };
-  //   jest.spyOn(repository, 'findOne').mockResolvedValue(todo as Todo);
-  //   expect(await service.findOne('1')).toBe(todo);
-  // });
-
-  it('should update a todo', async () => {
-    const updateTodo: CreateTodoDto = {
-      title: 'Todo 1',
-      description: 'Test description',
-      status: 'in-progress',
+  describe('update', () => {
+    const updateTodo: UpdateTodoDto = {
+      title: mockTodo.title,
+      description: mockTodo.description,
+      status: TodoStatus.PENDING,
     };
 
-    jest.spyOn(repository, 'save').mockResolvedValue(updateTodo as Todo);
+    it('should update a todo', async () => {
+      const result = { ...mockTodo, status: updateTodo.status } as Todo;
 
-    expect(await service.update('1', updateTodo)).toBe(updateTodo);
+      jest.spyOn(mockTodoRepo, 'findOne').mockResolvedValue(mockTodo);
+      jest.spyOn(repository, 'save').mockResolvedValue(result);
+
+      expect(await service.update(mockTodo.id, updateTodo, mockuser)).toBe(
+        result,
+      );
+    });
+
+    it('should throw NotFoundException when id is invalid', async () => {
+      jest.spyOn(mockTodoRepo, 'findOne').mockResolvedValue(null);
+      await expect(
+        service.update(mockTodo.id, updateTodo, mockuser),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
-  it('should remove a todo', async () => {
-    jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
-    expect(await service.remove('1')).toBe(undefined);
+  // // it('should return a todo by id', async () => {
+  // //   const todo = {
+  // //     title: 'Todo 1',
+  // //     description: 'Test description',
+  // //     status: 'pending',
+  // //   };
+  // //   jest.spyOn(repository, 'findOne').mockResolvedValue(todo as Todo);
+  // //   expect(await service.findOne('1')).toBe(todo);
+  // // });
+
+  describe('remove', () => {
+    it('should remove a todo', async () => {
+      jest.spyOn(mockTodoRepo, 'findOne').mockResolvedValue(mockTodo);
+      jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
+      expect(await service.remove(mockTodo.id, mockuser)).toBe(undefined);
+    });
+
+    it('should throw NotFoundException when id is invalid', async () => {
+      jest.spyOn(mockTodoRepo, 'findOne').mockResolvedValue(null);
+      jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
+      // expect(await service.remove(mockTodo.id, mockuser)).toBe(undefined);
+      await expect(service.remove(mockTodo.id, mockuser)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });
