@@ -5,20 +5,23 @@ import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { IValidatedUser } from './interfaces/validated-user-res.interface';
+import { CreateUserDto } from '../user/dto/create-user.dto';
+import { User } from '../user/entities/user.entity';
 
 describe('AuthService', () => {
   let authService: AuthService;
   let userService: UserService;
 
-  const mockUser = {
-    id: '123',
-    username: 'testuser',
-    password: 'hashedpassword',
+  const mockUser: User = {
+    id: '4110bd77-9f77-4ef6-9f2c-3f8d8e5cf992',
+    username: 'test',
+    password: 'hanshedpassword',
     todos: [],
   };
 
   const mockUserService = {
     findOneByUsername: jest.fn().mockReturnValue(mockUser),
+    create: jest.fn(),
   };
 
   const validateUserRes: IValidatedUser = {
@@ -95,6 +98,25 @@ describe('AuthService', () => {
       await expect(
         authService.login('testuser', 'wrongpassword'),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('register', () => {
+    const createUserDto: CreateUserDto = {
+      username: 'testuser',
+      password: 'password',
+    };
+
+    it('should register an user', async () => {
+      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue(hashedPassword);
+
+      jest.spyOn(userService, 'create').mockResolvedValue(mockUser);
+
+      // expect(await service.create(createUserDto)).toBe(result);
+      const result = await authService.register(createUserDto);
+
+      expect(result).toEqual({ access_token: 'signedtoken' });
     });
   });
 });

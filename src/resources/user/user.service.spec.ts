@@ -5,7 +5,7 @@ import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 
 const mockUserRepo = {
   create: jest.fn(),
@@ -84,13 +84,6 @@ describe('UserService', () => {
       jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
       const result = await service.findOneByUsername(mockUser.username);
       expect(result).toBe(mockUser);
-    });
-
-    it('should throw NotFoundException when user does not exist', async () => {
-      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
-      await expect(service.findOneByUsername('something')).rejects.toThrow(
-        NotFoundException,
-      );
     });
   });
 

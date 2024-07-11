@@ -20,7 +20,7 @@ import { User } from '../user/entities/user.entity';
 @ApiTags('Todo')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('/api/todo')
+@Controller('/api/todos')
 export class TodoController {
   constructor(private readonly todoService: TodoService) {}
 

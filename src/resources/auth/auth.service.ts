@@ -1,9 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { IValidatedUser } from './interfaces/validated-user-res.interface';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { CreateUserDto } from '../user/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -35,6 +40,38 @@ export class AuthService {
     const user = await this.validateUser(username, pass);
     if (!user) {
       throw new UnauthorizedException();
+    }
+
+    const payload: JwtPayload = {
+      username: user.username,
+      sub: user.id,
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async register(createUser: CreateUserDto): Promise<{ access_token: string }> {
+    const { username, password } = createUser;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await this.userService.create({
+      username,
+      password: hashedPassword,
+    });
+
+    // try {
+    //   return await this.userRepo.save(user);
+    // } catch (e) {
+    //   // console.log('create :: e : ', e.code);
+    //   if (e.code === 'ER_DUP_ENTRY') {
+    //     // duplicate entry
+    //     throw new ConflictException('username already registered');
+    //   }
+    //   throw e;
+    // }
+    if (!user) {
+      throw new BadRequestException();
     }
 
     const payload: JwtPayload = {
